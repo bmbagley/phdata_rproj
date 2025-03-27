@@ -1,0 +1,74 @@
+---
+title: "R_phdataproj Notebook"
+---
+
+Testing and working to refactor r code into pyspark
+
+```{r}
+library(readr)
+library(dplyr)
+library(lubridate)
+wd <- getwd()
+data_folder <- 'data'
+```
+
+```{r}
+list.files(file.path(wd, data_folder))
+```
+```{r}
+df <- read_csv(file.path(wd, data_folder, "dfMonthlySales.csv"))
+head(df, 5)
+```
+
+```{r}
+funGetAcutalsReportedDay <- function(){
+  # On what day of the month do we assume all actual monthly sales figures are known?
+  return(16)
+}
+
+funAddYearCols <- function(dfSalesMonthly){
+    # Create columns for some date info based on month of data, 
+    # then use today's date to build a report on 2 months of data
+    dfDayDetails <- dfSalesMonthly %>%
+      mutate(leap_year = leap_year(year(month)),
+             jan1_day = weekdays(floor_date(month, "year")),
+             month_num = month(month)) %>%
+      filter(month + months(1) + days(funGetAcutalsReportedDay() - 1) <= today())
+    
+    return(dfDayDetails)
+}
+
+funEnrichYearCols <- function(dfDayDetails){
+  # Use initial df to get max month of each year & count the number of days(?)
+    dfDayDetailsEnr <- dfDayDetails %>%
+      group_by(jan1_day, month_num, leap_year) %>%
+      mutate(maxmonth = max(month)) %>%
+      ungroup() #%>%
+      # inner_join(dfDayDetails, by = c("jan1_day", "month_num", "leap_year", "month")) %>%
+      # rename(year_ref = month) %>%
+      # group_by(jan1_day, month_num, leap_year, year_ref) %>%
+      # summarise(days_max = median(days, na.rm = TRUE)) %>%
+      # ungroup()
+    
+    return(dfDayDetailsEnr)
+}
+
+    
+df_int <- funAddYearCols(df)
+df_enr <- funEnrichYearCols(df_int)
+```
+
+```{r}
+head(df_enr, 10)
+# df_int %>%
+#   select(month, leap_year, jan1_day, month_num) %>%
+#   head(10)
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
