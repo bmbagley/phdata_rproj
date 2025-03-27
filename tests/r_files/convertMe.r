@@ -13,28 +13,34 @@ convertMe <- function(
   # find a year with as many days as each future year and starting on the same dow as each future year
   #   then see how many business days were in that month of that year
 
+  # Get leap year enrichment columns, ID mostly
   dfDayDetails <- funFillDayDetails(dfSalesMonthly)
-
+  
+  # Load in data about the current forecast for each location
   strDateAsOf <- dfSalesDaysFuture$date_forecast
   strLocationNum <- dfSalesDaysFuture$loc_num
   nMonths = dfSalesDaysFuture$months_predict
-
+  
+  # Error handle to define prediction start and range length in days i think
   nMonthStart <- 0
   nMonthStart <- ifelse(day(strDateAsOf) < funGetAcutalsReportedDay(),
     nMonthStart - 1,
     nMonthStart)
 
-  # If they haven't opened, we'll need to filter on that
+  # [orig] If they haven't opened, we'll need to filter on that
   if(any(is.na(dfSalesDaysFuture$open_date))) {
     print("You are missing some open dates")
     quit(save = "no", status = 1)
   }
-
+  
+  # 
   strOpenMonth <- ifelse(is.na(dfSalesDaysFuture$open_date),
     ymd("1900-01-01"),
     floor_date(dfSalesDaysFuture$open_date, "month")) %>% as.Date()
 
-  # If we could've known or do know about their future closing, only return the correct number of months
+  # [orig] If we could've known or do know about their future closing, only return the correct number of months
+  
+  # Use close date and forecast_length to set model params for forecasting
   strCloseMonth <- ifelse(is.na(dfSalesDaysFuture$close_date),
     ymd("2200-01-01"),
     ifelse(strDateAsOf + months(funGetClosingVision()) > dfSalesDaysFuture$close_date,

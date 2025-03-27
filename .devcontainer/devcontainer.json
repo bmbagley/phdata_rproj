@@ -3,7 +3,6 @@
 	"dockerComposeFile": ["./docker-compose.yaml"],
     "service": "spark",
     "workspaceFolder": "/home/jovyan/code",
-
     "customizations": {
         "vscode" : {
             "settings": {
