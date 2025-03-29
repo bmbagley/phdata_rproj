@@ -23,8 +23,11 @@ funFillDayDetails <- function(dfSalesMonthly){
       summarise(days_max = median(days, na.rm = TRUE)) %>%
       ungroup()
     # NOTE This function is throwing an error that even the past 3 years consumes > 16gb of data
+    return(dfdaydetails)
+}
 
-    # Use dayinfo enriched df to manually manipulate some leap year info
+funFillDayDetails2 <- function(DayDetails){
+  # Use dayinfo enriched df to manually manipulate some leap year info
     dfManualAdd <- dfDayDetails %>%
       filter(month_num <= 2,
              leap_year == FALSE,
@@ -38,15 +41,15 @@ funFillDayDetails <- function(dfSalesMonthly){
               mutate(leap_year = TRUE,
                      jan1_day = "Wednesday")) %>%
       anti_join(dfDayDetails, by = c("jan1_day", "month_num", "leap_year"))
-
+    
     # [orig comment] We need to manually append the situation of a leap-year where Jan 1 is a Wednesday
     dfDayDetails <- dfDayDetails %>%
       rbind(dfManualAdd) %>%
       mutate(days_max = as.integer(days_max))
-
+    
     dfDayDetails <<- dfDayDetails
     blnSetSalesDaysFuture <<- TRUE
-  return(dfDayDetails)
+    return(dfDayDetails)
 }
 
 funReinvestmentProjectsToDaysLost <- function(dfReinvestment, dfSalesMonthly) {
