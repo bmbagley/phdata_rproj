@@ -47,7 +47,9 @@ convertMe <- function(
       strCloseMonth <- floor_date(dfSalesDaysFuture$close_date, "month"),
       ymd("2200-01-01"))) %>% as.Date()
 
-  #lstFutureMonths <- lapply(strDateAsOf, function(x) floor_date(x, "month") + months(c(nMonthStart:(nMidTermMonths - 1))))
+  #[orig] lstFutureMonths <- lapply(strDateAsOf, function(x) floor_date(x, "month") + months(c(nMonthStart:(nMidTermMonths - 1))))
+  
+  # Create matrix from list of months, count of months to predict
   lstAddMonths <- mapply(function(x, y) seq(from = x, to = (y - 1)),
     x = nMonthStart,
     y = nMonths,
@@ -55,8 +57,8 @@ convertMe <- function(
   vecLengths <- lapply(lstAddMonths, length) %>% unlist()
   vecFutureMonths <- rep(floor_date(strDateAsOf, "month"), times = vecLengths) + months(unlist(lstAddMonths))
 
-  # This should come from Location ABT, and inadvertently does based on
-  # strLocationNum and dfSalesDaysFuture
+  # [orig] This should come from Location ABT, and inadvertently does based on strLocationNum and dfSalesDaysFuture
+  # Build df of location open/close info w/ enrichment
   dfSalesDaysFuture <-
     data.frame(
       loc_num = rep(strLocationNum, times = vecLengths),
@@ -101,6 +103,7 @@ convertMe <- function(
       days_max)) %>%
     select(-days)
 
+  # Error handle empty location type_code & concept
   vecNaLocNums <- dfSalesDaysFuture %>%
     filter(is.na(location_type_code) | is.na(concept_code)) %>%
     .$loc_num %>%
@@ -110,6 +113,8 @@ convertMe <- function(
     quit(save = "no", status = 1)
   }
 
+  # Create df by location of days to open/close
+  # !!Should be converted to fxn!!
   dfOpenCloseDaysLost <- dfSalesDaysFuture %>%
     group_by(loc_num) %>%
     filter(row_number() == 1) %>%
@@ -118,6 +123,7 @@ convertMe <- function(
       days_after_close = funSalesDaysBetween(close_date, floor_date(close_date, "month") + months(1) - days(1))) %>%
     select(loc_num, days_before_open, days_after_close)
 
+  # Generate dates related to open, close, counts, info about opening and closing
   dfSalesDaysFuture <- dfSalesDaysFuture %>%
     left_join(dfReinvestmentProjects %>%
         mutate(shutdown = ymd(shutdown),
@@ -142,7 +148,7 @@ convertMe <- function(
     select(-days_lost, -open_date, -close_date,  -month_open, -month_close,
       -days_before_open, -days_after_close)
 
-  # Finally, append inflation factors based on the latest available information at that time
+  # [orig] Finally, append inflation factors based on the latest available information at that time
   dfSalesDaysFuture <- dfSalesDaysFuture %>%
     mutate(reported_month = floor_date(date_forecast - days(funGetAcutalsReportedDay() - 1), "month") - months(1)) %>%
     left_join(dfSalesMonthly %>%
@@ -151,8 +157,9 @@ convertMe <- function(
         rename(inflation_factor = inflation_factor_ending),
       by = c("loc_num", "reported_month" = "month"))
 
-  # Create a data frame of inflation rates for each out month
-  # Lower near-term inflation rate hard-coded for 2025, then transitions to long-term rate by 2027
+  # [orig]Create a data frame of inflation rates for each out month
+  # [orig]Lower near-term inflation rate hard-coded for 2025, then transitions to long-term rate by 2027
+  # Use built df of 
   dfIncrementalInflation <- dfSalesDaysFuture %>%
     select(month, date_forecast) %>%
     unique() %>%

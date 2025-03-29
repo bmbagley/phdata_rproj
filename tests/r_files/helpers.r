@@ -1,6 +1,7 @@
 # Add missing dependencies
 library(dplyr) #mutate, filter
 library(readr)
+library(lubridate)
 
 funFillDayDetails <- function(dfSalesMonthly){
     # Create columns for some date info based on month of data, 
@@ -21,6 +22,7 @@ funFillDayDetails <- function(dfSalesMonthly){
       group_by(jan1_day, month_num, leap_year, year_ref) %>%
       summarise(days_max = median(days, na.rm = TRUE)) %>%
       ungroup()
+    # NOTE This function is throwing an error that even the past 3 years consumes > 16gb of data
 
     # Use dayinfo enriched df to manually manipulate some leap year info
     dfManualAdd <- dfDayDetails %>%
@@ -84,6 +86,7 @@ funReinvestmentProjectsToDaysLost <- function(dfReinvestment, dfSalesMonthly) {
   return(dfReinvestment)
 }
 
+## Good; simple and concise, recreate
 funSalesDaysBetween <- function(vecStart, vecEnd){
   # a function to calculate the number of non sundays between start and end date vectors of equal sizes
 
