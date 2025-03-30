@@ -9,11 +9,12 @@ from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions  as F
 from pyspark.sql.types import DateType
 from pathlib import Path
+import logging
 # from datetime import datetime
 # import calendar
 # from dateutil.relativedelta import relativedelta
 
-valReportDay = 16
+valActualsReportDay = 16
 valOpeningVision = 12
 valClosingVision = 12
 valReinvestmentVision = 12
@@ -154,7 +155,48 @@ def funAnnualizedInflation(blnLiveForecast=True) -> float:
         return 1.01
     else:
         return 1.05222
-def funMonthsBetween(startMonth: datetime, endMonth: datetime) -> int:
-    return (endMonth.year - startMonth.year) * 12 + endMonth.month - startMonth.month
+
+
+def funForecastUtils(dfFuture: DataFrame) -> DataFrame:
+    """
+    Create enrichment columns in the Forecast data.
+
+    Returns:
+    DataFrame: The DataFrame with additional forecast-related columns.
+    """
+    # try:
+    if dfFuture.filter(F.col("open_date").isNull()).count() > 0:
+        print("There are Null values in Future open_date col, exiting")
+        # logging.error("There are Null values in Future open_date col, exiting")
+        return
+
+    # except Exception as e:
+    #     # logging.error(f"An error occurred in the my_function: {e}")
+    #     raise
+
+    # Conditions to build cols
+    cond1 = F.dayofmonth(F.col("date_forecast")) < valActualsReportDay
+    cond2 = F.col("open_date").isNull()
+    cond3 = F.col('date_forecast').isNotNull()
+    cond4 = F.add_months(F.col('date_forecast'), valClosingVision) > F.col('close_date')
+
+    # Build enriched dataframe
+    dfFuture = dfFuture.withColumn(
+        "nMonthStart", F.when(cond1, -1).otherwise(0)
+    ).withColumn(
+        "strOpenMonth",
+        F.when(cond2, "1900-01-01").otherwise(F.trunc(F.col("open_date"), 'month'))
+    ).withColumn(
+        "strCloseMonth",
+        F.when(cond3 & cond4, F.trunc(F.col('close_date'), 'month')).otherwise('2200-01-01')
+    )
+
+
+    return dfFuture
+# def funLocationFuture(SalesDayFuture:Data) -> DataFrame:
+
+
+# def funMonthsBetween(startMonth: datetime, endMonth: datetime) -> int:
+#     return (endMonth.year - startMonth.year) * 12 + endMonth.month - startMonth.month
 
 

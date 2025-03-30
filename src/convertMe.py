@@ -12,7 +12,7 @@ import pathlib
 sparksesh = SparkSession.builder.getOrCreate()
 
 # Load in data using new class
-pathDataLocation = pathlib.Path(utils.get_proj_root(), 'tests', 'data')
+pathDataLocation = pathlib.Path(utils.funProjRoot(), 'tests', 'data')
 classDataLoader = utils.FileLoader(sparksesh, pathDataLocation)
 
 
@@ -35,6 +35,9 @@ def funCreateSalesMonthly():
 def main():
     # Load in sales data and aggregate data (this can be incremental)    
     dfSalesMonthly, blnLiveForecast = funCreateSalesMonthly()
+    # dfSalesMonthly.show(truncate=True)
+    dfSalesDaysFuture = utils.funForecastUtils(classDataLoader.load_file("dfSalesDaysFuture.csv"))
+    dfSalesDaysFuture.show(truncate=True)
     
 
 
