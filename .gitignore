@@ -6,6 +6,7 @@ __pycache__/
 
 # Remove datafiles and noncommit files
 **/data/
+*.Rmd
 
 # C extensions
 *.so
