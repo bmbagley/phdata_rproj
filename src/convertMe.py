@@ -20,7 +20,6 @@ classDataLoader = utils.FileLoader(sparksesh, pathDataLocation)
 ## Replace Montly Sales aggregation with enrichment, flags and inequalities instead of hard coded rules
 # NOTE The stored reporting table/data from previous runs can be used to remove already-aggregagted data in previous years
 def funCreateSalesMonthly(dfSalesMonthly: DataFrame) -> DataFrame:
-    # dfSalesMonthly =
     classSalesEnrich = utils.DateUtils(dfSalesMonthly, "month")
     # [Potential improvement] Remove previous years of aggregations already stored if CONDITIONS
     dfSalesMonthly = classSalesEnrich.add_month_info_columns()
@@ -76,16 +75,16 @@ def main():
     )
     # dfReinvestment.show(truncate=True)
 
-    # # Build Incremental Inflation df for joining by prediction month
+    # Build Incremental Inflation df for joining by prediction month
     dfIncrementalInflation = utils.funBuildIncrementInflation(
         sparksesh, 120, utils.valAnnualizedInflation
     )
     # dfIncrementalInflation.show(truncate=True)
 
-    # Join sales & future
-    # dfsalesMonthly groupby loc_num, get total number of rows of history (filter <12 mo)
+    # Join sales & all additional columns by prediction month and biz requirements
+    # dfout = funCreatePredFuture(XX,YY,ZZ)
 
-    print("main complted successfully")
+    print("main completed successfully")
     return True
 
 
