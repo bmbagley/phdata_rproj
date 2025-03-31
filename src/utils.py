@@ -1,8 +1,8 @@
 """
-spark.py
+utils.py
 ~~
 
-Module containing functions for use with spark
+Module containing functions for use in the entrypoint, focusing on pyspark functions to properly fan out efficently.
 """
 
 from pyspark.sql import SparkSession, DataFrame
@@ -12,9 +12,7 @@ from pyspark.sql.types import DateType, StructType, StructField, IntegerType
 from pathlib import Path
 import logging
 
-# from datetime import datetime
-# import calendar
-# from dateutil.relativedelta import relativedelta
+
 
 valActualsReportDay = 16
 valOpeningVision = 12
@@ -417,3 +415,17 @@ def funBuildIncrementInflation(
     )
 
     return df
+
+
+# # Incomplete Needs
+# - Decouple history from prediction future
+#     - if-then 
+# - Join MonthlySales to Prediction_Months to produce LONG table by prediction month & location
+#   - Join all other (Cannibalization[loc_num & month], Reinvestment Factors[loc_num & month], Reinvestment Project[??]) on Month and location
+# - Figure out if the leap_year joins can be replicated using the DateUtils class, or if they are ok not to be replicated and only use the single source of truth and join on prediction_month/Sales_month
+#     - During prediction future
+#     - During Reinvestment join
+#     - InflationFactor
+# - Convert price change update into if then w/in Inflation
+#     - Could be a separate table that gets joined as well
+# - Age bins and build segmentation
