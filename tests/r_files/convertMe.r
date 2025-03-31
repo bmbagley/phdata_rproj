@@ -13,50 +13,47 @@ convertMe <- function(
   # find a year with as many days as each future year and starting on the same dow as each future year
   #   then see how many business days were in that month of that year
 
-  # Get leap year enrichment columns, ID mostly
   dfDayDetails <- funFillDayDetails(dfSalesMonthly)
-  
-  # Load in data about the current forecast for each location
+
   strDateAsOf <- dfSalesDaysFuture$date_forecast
   strLocationNum <- dfSalesDaysFuture$loc_num
   nMonths = dfSalesDaysFuture$months_predict
-  
-  # Error handle to define prediction start and range length in days i think
+
   nMonthStart <- 0
-  nMonthStart <- ifelse(day(strDateAsOf) < funGetAcutalsReportedDay(),
+  nMonthStart <- ifelse(day(ymd(strDateAsOf)) < funGetAcutalsReportedDay(),
     nMonthStart - 1,
     nMonthStart)
 
-  # [orig] If they haven't opened, we'll need to filter on that
+  # If they haven't opened, we'll need to filter on that
   if(any(is.na(dfSalesDaysFuture$open_date))) {
     print("You are missing some open dates")
     quit(save = "no", status = 1)
   }
-  
-  # 
+
   strOpenMonth <- ifelse(is.na(dfSalesDaysFuture$open_date),
     ymd("1900-01-01"),
     floor_date(dfSalesDaysFuture$open_date, "month")) %>% as.Date()
 
-  # [orig] If we could've known or do know about their future closing, only return the correct number of months
-  
-  # Use close date and forecast_length to set model params for forecasting
+  # If we could've known or do know about their future closing, only return the correct number of months
   strCloseMonth <- ifelse(is.na(dfSalesDaysFuture$close_date),
     ymd("2200-01-01"),
-    ifelse(strDateAsOf + months(funGetClosingVision()) > dfSalesDaysFuture$close_date,
+    ifelse(ymd(strDateAsOf) + months(funGetClosingVision()) > dfSalesDaysFuture$close_date,
       strCloseMonth <- floor_date(dfSalesDaysFuture$close_date, "month"),
       ymd("2200-01-01"))) %>% as.Date()
 
-  #lstFutureMonths <- lapply(strDateAsOf, function(x) floor_date(x, "month") + months(c(nMonthStart:(nMidTermMonths - 1))))
+  #[orig]lstFutureMonths <- lapply(strDateAsOf, function(x) floor_date(x, "month") + months(c(nMonthStart:(nMidTermMonths - 1))))
+  # Create nested list from (typically 0:119) start to end month number to be forecasted
   lstAddMonths <- mapply(function(x, y) seq(from = x, to = (y - 1)),
-    x = nMonthStart,
-    y = nMonths,
+    x = nMonthStart, #0 OR -1
+    y = nMonths, #typically 120 (months_predict)
     SIMPLIFY = FALSE)
+  # Count length of each row (location?)
   vecLengths <- lapply(lstAddMonths, length) %>% unlist()
-  vecFutureMonths <- rep(floor_date(strDateAsOf, "month"), times = vecLengths) + months(unlist(lstAddMonths))
+  # Create list (not-nested) to flatten and fill in nested list with dates to be forecast
+  vecFutureMonths <- rep(floor_date(ymd(strDateAsOf), "month"), times = vecLengths) + months(unlist(lstAddMonths))
 
-  # This should come from Location ABT, and inadvertently does based on
-  # strLocationNum and dfSalesDaysFuture
+  # [orig] This should come from Location ABT, and inadvertently does based on strLocationNum and dfSalesDaysFuture
+  # Create dataframe by location with a row for every month to be forecast with additional info
   dfSalesDaysFuture <-
     data.frame(
       loc_num = rep(strLocationNum, times = vecLengths),
@@ -69,13 +66,14 @@ convertMe <- function(
       jan1_day = weekdays(floor_date(vecFutureMonths, "year")),
       month_num = month(vecFutureMonths),
       leap_year = leap_year(year(vecFutureMonths)),
-      concept_code = rep(dfSalesDaysFuture$concept_code, times = vecLengths),
+      concept_code = rep(dfSalesDaysFuture$location_type_code, times = vecLengths),
       location_type_code = rep(dfSalesDaysFuture$location_type_code,
         times = vecLengths),
       price_group =  rep(dfSalesDaysFuture$price_group, times = vecLengths),
       stringsAsFactors = FALSE
     ) %>%
     filter(month <= month_close, month >= month_open) %>%
+    #------- Completed till here ---------
     inner_join(dfDayDetails, by = c("jan1_day", "month_num", "leap_year")) %>%
     select(-leap_year,-jan1_day,-year_ref) %>%
     # Modify OCLs
@@ -122,7 +120,7 @@ convertMe <- function(
     left_join(dfReinvestmentProjects %>%
         mutate(shutdown = ymd(shutdown),
           reopen = ymd(reopen)) %>%
-        funReinvestmentProjectsToDaysLost(),
+        funReinvestmentProjectsToDaysLost(dfSalesMonthly = dfSalesMonthly),
       by = c("month", "loc_num")) %>%
     left_join(dfOpenCloseDaysLost,
       by = "loc_num") %>%
@@ -144,7 +142,7 @@ convertMe <- function(
 
   # Finally, append inflation factors based on the latest available information at that time
   dfSalesDaysFuture <- dfSalesDaysFuture %>%
-    mutate(reported_month = floor_date(date_forecast - days(funGetAcutalsReportedDay() - 1), "month") - months(1)) %>%
+    mutate(reported_month = floor_date(ymd(date_forecast) - days(funGetAcutalsReportedDay() - 1), "month") - months(1)) %>%
     left_join(dfSalesMonthly %>%
         # We want ending inflation factor because that's where all future months will start
         select(loc_num, month, inflation_factor_ending) %>%
@@ -272,7 +270,7 @@ convertMe <- function(
       # known about at the time of the forecast
       # so we carry forward their last-known value
       gocf = ifelse(strScope == "forecast" |
-          month < date_forecast + months(funGetOpeningVision()),
+          month < ymd(date_forecast) + months(funGetOpeningVision()),
         gocf, NA),
       gocf = as.double(gocf)) %>%
     group_by(loc_num, date_forecast) %>%
@@ -290,7 +288,7 @@ convertMe <- function(
       # known about at the time of the forecast
       # so we carry forweard their last-known value
       reinvestment_factor = ifelse(strScope == "forecast" |
-          month < date_forecast + months(funGetReinvestmentVision()),
+          month < ymd(date_forecast) + months(funGetReinvestmentVision()),
         reinvestment_factor, NA)) %>%
     group_by(loc_num, date_forecast) %>%
     fill(reinvestment_factor) %>%

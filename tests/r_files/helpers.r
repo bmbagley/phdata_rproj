@@ -1,17 +1,10 @@
-# Add missing dependencies
-library(dplyr) #mutate, filter
-library(readr)
-
 funFillDayDetails <- function(dfSalesMonthly){
-    # Create columns for some date info based on month of data, 
-    # then use today's date to build a report on 2 months of data
     dfDayDetails <- dfSalesMonthly %>%
       mutate(leap_year = leap_year(year(month)),
              jan1_day = weekdays(floor_date(month, "year")),
              month_num = month(month)) %>%
       filter(month + months(1) + days(funGetAcutalsReportedDay() - 1) <= today())
     
-    # Use initial df to get max month of each year & count the number of days(?)
     dfDayDetails <- dfDayDetails %>%
       group_by(jan1_day, month_num, leap_year) %>%
       summarise(month = max(month)) %>%
@@ -22,7 +15,6 @@ funFillDayDetails <- function(dfSalesMonthly){
       summarise(days_max = median(days, na.rm = TRUE)) %>%
       ungroup()
 
-    # Use dayinfo enriched df to manually manipulate some leap year info
     dfManualAdd <- dfDayDetails %>%
       filter(month_num <= 2,
              leap_year == FALSE,
@@ -37,7 +29,7 @@ funFillDayDetails <- function(dfSalesMonthly){
                      jan1_day = "Wednesday")) %>%
       anti_join(dfDayDetails, by = c("jan1_day", "month_num", "leap_year"))
 
-    # [orig comment] We need to manually append the situation of a leap-year where Jan 1 is a Wednesday
+    # We need to manually append the situation of a leap-year where Jan 1 is a Wednesday
     dfDayDetails <- dfDayDetails %>%
       rbind(dfManualAdd) %>%
       mutate(days_max = as.integer(days_max))
